@@ -5,10 +5,10 @@ const cdn_host = "http://127.0.01:8887/cdn/",
 
 const config = {
     data_file: data_host+"latest housing valuation.csv",
-    id_col: 'FIPS',
+    id_col: 'Fips',
     name_cols: ['County', 'State'],
-    y_col: 'Total Return',
-    value_cols: ['Total Return', 'Net Annual Return'],
+    y_col: '% Total Return',
+    value_cols: ['% Total Return', '% Annual Return'],
     quant: 'scaleQuantile',
     colors: ['red', 'green'],
     number_of_colors: 7,
@@ -75,7 +75,7 @@ function ready(dataframe, geos) {
                     .filter(x=>x !== undefined)
                     .join(', ')
                + "<br>"
-               + config.value_cols.map(val => val + ": " + dataframe.get(val).get(geo.id)).join('%<br>') + '%'
+               + config['value_cols'].map(val => val + ": " + dataframe.get(val).get(geo.id)).join('<br>')
     });
     svg.call(tip)
 

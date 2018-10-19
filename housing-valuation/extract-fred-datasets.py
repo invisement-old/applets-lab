@@ -15,7 +15,7 @@ FRED_FILE_TYPE= "json"
 
 ### PATHES
 FRED_ENDPOINT= "https://api.stlouisfed.org/fred/series/observations"
-OUTPUT_PATH = "output/"
+OUTPUT_PATH = "data/"
 
 ### DATASETS: INPUTS and OUTPUTS
 FRED_SERIES= { 

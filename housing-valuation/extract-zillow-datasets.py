@@ -1,16 +1,20 @@
 '''
 extract zillow datasets related to housing price and rent price
 '''
+def main():
+    fetch_zip(ZILLOW_BY_COUNTY)
+    sucess = [try_or_skip(extract_and_save, dataset=d) for d in DATASETS]
+    print('successful extracts = ', sucess)
 
 ### LIBRARIES
 import pandas as pd, requests, zipfile, io
 
-### PATHES
-ARCHIVE_PATH = "archive/"
-OUTPUT_PATH = "output/"
-
 ### CONSTANTS
 DATASETS = ["rent by county", "house price by county"]
+
+### PATHES
+TEMP_PATH = "temp/"
+OUTPUT_PATH = "data/"
 
 ### INPUTS
 ZILLOW_BY_COUNTY = "http://files.zillowstatic.com/research/public/County.zip"
@@ -33,24 +37,17 @@ OUTPUTS = {
     },
 }
 
-### EXECUTABLE
-def main():
-    fetch_zip(ZILLOW_BY_COUNTY)
-    sucess = [try_or_skip(extract_and_save, dataset=d) for d in DATASETS]
-    print('successful extracts = ', sucess)
-
 ### FUNCTIONS
-
 def fetch_zip (url):
     ''' fetch a zip file from url and extract it to config['archive path']'''
     r = requests.get(url)
     r.raise_for_status()
     z = zipfile.ZipFile(io.BytesIO(r.content))
-    z.extractall(ARCHIVE_PATH)
+    z.extractall(TEMP_PATH)
 
 def extract_and_save (dataset):
     kv = {'date_col': 'date', **OUTPUTS[dataset]}
-    input = pd.read_csv(ARCHIVE_PATH + kv['source'], encoding='latin')
+    input = pd.read_csv(TEMP_PATH + kv['source'], encoding='latin')
     month_regex = "[0-9]{4}-[0-9]{2}.*"
     df = (input
             .set_index(kv['index_cols'])

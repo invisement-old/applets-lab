@@ -1,5 +1,5 @@
 '''
-Applet to calculate intrinsic economic value of a property based on buy or rent decision indifference (arbitrage)
+calculate intrinsic economic value of a property based on buy or rent decision indifference (arbitrage)
 
 Rent = Price*mortgage_rate 
         + DEPRECIATION_RATE*min(Building, Price) 
@@ -9,12 +9,22 @@ Rent = Price*mortgage_rate
         + Price * mortgage_insurance
 
 '''
+def main():
+    ''' read all input files, prepare housing table, calculate intrinsic value, add return columns, and save output '''
+    housing_table = read_and_join_input_files()
+    housing_table = prepare_housing_valuation_table(housing_table)
+    housing_table['intrinsic house value'] = calculate_intrinsic_value (housing_table).round()
+    housing_table["total return"] = (housing_table['intrinsic house value'] - housing_table['house price'])/housing_table['house price']
+    housing_table['net annual return'] = housing_table['total return'] * (housing_table['mortgage rate']+PMI_RATE)
+    housing_table['annual return'] = housing_table['net annual return'] + housing_table['mortgage rate'] + PMI_RATE
+    return prune_and_save (housing_table)
 
 ### LIBRARIES
 import datetime, pandas as pd, numpy as np
 
 ### HOST ADDRESSES
-DATA_HOST = "127.0.0.1:8887/"
+INPUT_PATH = "data/"
+OUTPUT_PATH = "data/"
 
 ### CONSTANTS
 PMI_RATE = 0.01 # private mortgage insurance rate
@@ -25,26 +35,15 @@ MAX_MORTGAGE_CREDIT = 1000000 # maximum allowance for tax deduction on mortgage
 BASE_QUANTILE = 0.3
 
 ### INPUTS
-PRICE_FILE = DATA_HOST + "house price by county.csv"
-RENT_FILE = DATA_HOST + "rent by county.csv"
-MORTGAGE_FILE = DATA_HOST + "mortgage rate 30 year fixed.csv"
-GROWTH_FILE = DATA_HOST + "nominal gdp growth.csv" 
-TAX_FILE = DATA_HOST + "property tax by fips.csv"
+PRICE_FILE = INPUT_PATH + "house price by county.csv"
+RENT_FILE = INPUT_PATH + "rent by county.csv"
+MORTGAGE_FILE = INPUT_PATH + "mortgage rate 30 year fixed.csv"
+GROWTH_FILE = INPUT_PATH + "nominal gdp growth.csv" 
+TAX_FILE = INPUT_PATH + "property tax by fips.csv"
 
 ### OUTPUTS
-HOUSING_FILE = DATA_HOST + "housing valuation.csv"
-LATEST_HOUSING_FILE = DATA_HOST + "latest housing valuation.csv"
-
-### EXECUTABLE
-def main():
-    ''' read all input files, prepare housing table, calculate intrinsic value, add return columns, and save output '''
-    housing_table = read_and_join_input_files()
-    housing_table = prepare_housing_valuation_table(housing_table)
-    housing_table['expected house price'] = calculate_intrinsic_value (housing_table)
-    housing_table["total return"] = (housing_table['expected house price'] - housing_table['house price'])/housing_table['house price']
-    housing_table['net annual return'] = housing_table['total return'] * (housing_table['rate']+PMI_RATE)
-    housing_table['annual return'] = housing_table['net annual return'] + housing_table['rate'] + PMI_RATE
-    prune_and_save (housing_table)
+HOUSING_FILE = OUTPUT_PATH + "housing valuation.csv"
+LATEST_HOUSING_FILE = OUTPUT_PATH + "latest housing valuation.csv"
 
 ### FUNCTIONS
 def read_and_join_input_files (base_quantile=BASE_QUANTILE):
@@ -60,8 +59,8 @@ def read_and_join_input_files (base_quantile=BASE_QUANTILE):
 
     rate = (pd.read_csv(MORTGAGE_FILE)
         .set_index('date')
-        .rename(columns = {"mortgage rate 30 year fixed": "rate"})
-        .filter(["rate"])
+        .rename(columns = {"mortgage rate 30 year fixed": "mortgage rate"})
+        .filter(["mortgage rate"])
     )
     rate = rate/100
     rate.index = pd.to_datetime(rate.index)
@@ -98,7 +97,7 @@ def calculate_intrinsic_value (housing_valuation_table):
             + housing_valuation_table['extra tax deduction'] * FEDERAL_INCOME_TAX_RATE
             - housing_valuation_table['house price base']*DEPRECIATION_RATE
         )/(
-            housing_valuation_table['rate']
+            housing_valuation_table['mortgage rate']
             + PMI_RATE
             + housing_valuation_table['property tax rate']
             #+ DEPRECIATION_RATE
@@ -112,35 +111,52 @@ def prepare_housing_valuation_table (housing_table):
     housing_table['rent growth'][housing_table['rent growth']<0] = 0 
     housing_table['extra tax deduction'] = 0
     housing_table['extra tax deduction'][
-        housing_table['house price'] * housing_table['rate'] > STANDARD_TAX_DEDUCTION
-        ] = housing_table['house price'] * housing_table['rate']
+        housing_table['house price'] * housing_table['mortgage rate'] > STANDARD_TAX_DEDUCTION
+        ] = housing_table['house price'] * housing_table['mortgage rate']
     housing_table['extra tax deduction'][
         housing_table['house price'] > MAX_MORTGAGE_CREDIT
-    ] = MAX_MORTGAGE_CREDIT * housing_table['rate'] - STANDARD_TAX_DEDUCTION
+    ] = MAX_MORTGAGE_CREDIT * housing_table['mortgage rate'] - STANDARD_TAX_DEDUCTION
     return housing_table
 
 def prune_and_save (housing_table):
     ''' to pretify the housing table and save in destination'''
     housing_table.to_csv(HOUSING_FILE, index=False)
-    name_change = {"fips": "FIPS", "state": "State", "county": "County", 
-        "house price": "Average House Price", "rent": "Average Rent", 
-        "property tax rate": "Property Tax Rate", "rent growth": "Expected Rent Growth",
-        "expected house price": "Economic Value of Average Home",
-        "total return": "Total Return",
-        "net annual return": "Net Annual Return"}
-    percentage_columns = ["property tax rate", "rent growth", "total return", "net annual return"]
-    housing_table[percentage_columns] = (housing_table[percentage_columns] * 100).round(1)
+    name_change = {"fips": "Fips", "state": "State", "county": "County", 
+        "house price": "$ Average House Price", 
+        "rent": "$ Average Rent", 
+        "intrinsic house value": "$ Intrinsic Value of Average House",
+        "property tax rate": "% Property Tax Rate", 
+        "rent growth": "% Rent Growth Forecast",
+        "total return": "% Total Return",
+        "annual return": "% Annual Return",
+        "net annual return": "% Net Annual Return"}
     date = housing_table['date'].value_counts()
     max_date = date[date > 1000].index.max()
-    return (housing_table
+    housing_table = (housing_table
         .query('date == @max_date') 
         .filter(name_change.keys())
-        .rename(columns = name_change)#.rename(str.title, axis='column')
-        .to_csv(LATEST_HOUSING_FILE, index=False)
+        .rename(columns=name_change)
+        .rename(str.title, axis= 'columns')
     )
+    percentage_columns = [col for col in housing_table.columns if col.startswith('%')]
+    housing_table[percentage_columns] = housing_table[percentage_columns] * 100
+    housing_table[percentage_columns] = housing_table[percentage_columns].round(1)
+    money_columns = [col for col in housing_table.columns if col.startswith('$')]
+    housing_table[money_columns] = housing_table[money_columns].round()
+    housing_table.to_csv(LATEST_HOUSING_FILE, index=False)
+    return True
 
+def try_or_skip(func, **kwargs):
+    try:
+        return func(**kwargs)
+    except Exception as e:
+        args = {**kwargs}
+        print('WARNING!!: Skipped executing function "{}" with given arguments {} because of the follwoing error:'.format(func.__name__, args))
+        print(e)
+        return False
 
-if __name__ == '__main__': main()
+if __name__ == '__main__': try_or_skip(main, **{})
+
 
 #a = pd.read_csv(config['map path']+"buy or rent.csv")
 

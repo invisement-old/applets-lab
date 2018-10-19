@@ -1,8 +1,5 @@
 '''
-Applet to calculate buy or rent a house: housing economic and intrinsic value.
-
-Building = 50k + sqfeed * 100
-Land = Price - Building
+Applet to calculate intrinsic economic value of a property based on buy or rent decision indifference (arbitrage)
 
 Rent = Price*mortgage_rate 
         + DEPRECIATION_RATE*min(Building, Price) 

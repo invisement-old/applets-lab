@@ -12,8 +12,8 @@ const config = {
     quant: 'scaleQuantile',
     colors: ['red', 'green'],
     number_of_colors: 7,
-    legend_div: "#map-legend",
-    map_div: "#main-map",
+    map_div: "#yap-canvas",
+    legend_div: "#yap-legend",
     info_table: "#info-table",
     data_type: "",
     geo_file: cdn_host+"us-counties.geo.json",
@@ -41,7 +41,7 @@ loadScripts(scripts).then(init)
 function init () {
     path = d3.geo.path()
     quants = d3.scale.quantile()
-    svg = d3.select(config.map_div).append("svg")//.attr("class", "yap-map")
+    svg = d3.select(config.map_div).classed("yap-canvas", true).append("svg")
     tip = d3.tip().attr('class', 'yap-tip').offset([-10,0])
 
     color = d3.scale.linear().domain(config['colors'].map((a,i)=>i)).interpolate(d3.interpolateHsl).range(config['colors']);
@@ -142,7 +142,7 @@ function info_table(geo) {
   spans = key_value.map(x => '<span>' + x[0] +'</span>' + '<span style="position: absolute; right:1em;" >' + x[1] +'</span> <br>')
 
   //document.getElementById(config.info_table).innerHTML = spans.join('')
-  d3.select(config.info_table).html(spans.join(''))
+  d3.select(config.info_table).classed("yap-canvas", true).html(spans.join(''))
 
 }
 
@@ -154,7 +154,7 @@ function draw_boundries(svg, geo_data) {
 function draw_legend(legend_div, values) {
     bar_width = 5;//in em
 
-    var legend = d3.select(legend_div)//.attr("class", "yap-legend")
+    var legend = d3.select(legend_div).classed("yap-caption", true)
     for (var i = 0; i < colorscale.length; i++) {
         //for each color create a rect, color it, text it, style it
         legend

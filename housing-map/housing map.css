@@ -1,36 +1,46 @@
-
-.yap-legend {
-  display: flex;
-  flex-direction: row;
-  bottom: 0em;
-  right: 0em;
-  text-align: left;
-  font-size: small;
-}
-
-.yap-legend > rect {
-  color: white;
-  width: 4em;
-  height: 1em;
-}
-
-.yap-text {
-  width: 100%;
-  text-align: center;
-  font-weight: bold;
-  font-size: small;
-}
-
 .yap-canvas {
   position: relative;
-  background-color: rgb(245, 245, 255);
-  padding: 1.5em;
-  margin: 1em;
+  background-color: rgb(230, 230, 255);
+  padding: 1em;
 }
 
-.yap-canvas > * {
+.yap-canvas > :not(svg) {
   position: absolute;
   font-size: small;
+}
+
+.yap-caption {
+    display: flex;
+    justify-content: center;
+}
+
+.yap-caption > rect {
+    color: white;
+    width: 5em;
+    height: 100%;
+}
+.vertical {
+  flex-direction: column;
+}
+.left {
+  left: 0;
+}
+.right {
+  right: 0;
+}
+.top {
+  top: 0;
+}
+.bottom {
+  bottom: 0;
+}
+.center {
+  left: 50%;
+  transform: translateX(-50%)
+}
+.middle {
+  top: 50%;
+  transform: translateY(-50%)
 }
 
 .yap-tip {

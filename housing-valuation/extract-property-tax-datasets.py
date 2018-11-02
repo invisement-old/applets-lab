@@ -1,4 +1,8 @@
 ''' extracts property tax datasets for states and counties from excel file "property_tax_2017.xlsx" '''
+### PATHES to change
+HOST = "/home/invisement/PROJECTS/inVisement2/apps-workshop/"
+INPUT_PATH = HOST + "input/"
+OUTPUT_PATH = HOST + "data/"
 
 def main():
     success1 = try_or_skip(extract_property_tax_by_state, **{})
@@ -7,10 +11,6 @@ def main():
 
 ### LIBRARIES
 import pandas as pd, requests, zipfile, io
-
-### PATHES
-INPUT_PATH = "input/"
-OUTPUT_PATH = "data/"
 
 ### INPUTS
 PROPERY_TAX_FILE = "property_tax_2017.xlsx"

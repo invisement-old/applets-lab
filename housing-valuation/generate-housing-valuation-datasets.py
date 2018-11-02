@@ -9,6 +9,11 @@ Rent = Price*mortgage_rate
         + Price * mortgage_insurance
 
 '''
+### PATHES to change
+HOST = "/home/invisement/PROJECTS/inVisement2/apps-workshop/"
+INPUT_PATH = HOST + "data/"
+OUTPUT_PATH = HOST + "data/"
+
 def main():
     ''' read all input files, prepare housing table, calculate intrinsic value, add return columns, and save output '''
     housing_table = read_and_join_input_files()
@@ -21,10 +26,6 @@ def main():
 
 ### LIBRARIES
 import datetime, pandas as pd, numpy as np
-
-### HOST ADDRESSES
-INPUT_PATH = "data/"
-OUTPUT_PATH = "data/"
 
 ### CONSTANTS
 PMI_RATE = 0.01 # private mortgage insurance rate

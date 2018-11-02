@@ -2,6 +2,11 @@
 fetch, reshape, extract, and save FRED series. 
 for each indicators.csv every record has (date, value)
 '''
+### PATHES
+HOST = "/home/invisement/PROJECTS/inVisement2/apps-workshop/"
+OUTPUT_PATH = HOST + "data/"
+FRED_ENDPOINT= "https://api.stlouisfed.org/fred/series/observations"
+
 def main():
     sucess = [try_or_skip(fetch_and_save_fred_dataset, dataset=d) for d in FRED_SERIES.keys()]
     print('successful extracts = ', sucess)
@@ -13,27 +18,32 @@ import requests, pandas as pd
 FRED_API_KEY= "88b9092ad3db013e454ea78d5a1084c9"
 FRED_FILE_TYPE= "json"
 
-### PATHES
-FRED_ENDPOINT= "https://api.stlouisfed.org/fred/series/observations"
-OUTPUT_PATH = "data/"
 
 ### DATASETS: INPUTS and OUTPUTS
 FRED_SERIES= { 
     "high yield spread": {
         "source": "FRED",
         "id": "BAMLH0A0HYM2EY",
-        "title": "High Yield Spread",
-        "subtitle": "10 year treasury yield minus 2 year treasury yield",
+        "title": "Corporate Yield Spread",
+        "subtitle": "Risky Corporate Bond Yield minus Treasury Bond Yield"
         "unit": "Percent",
+        "frequency": "D"
+    },
+    "fed total assets": {
+        "source": "FRED",
+        "id": "WALCL",
+        "title": "Federal Reserve Total Assets",
+        "subtitle": "Fed Balance Sheet Total Assets in Millions of Dollar",
+        "unit": "Millions of USD",
         "frequency": "D"
     },
     "treasury yield spread": {
         "id": "T10Y2Y",
-        "title": "Treasury Yield Spread" ,
+        "title": "Treasury Bond Spread" ,
         "source": "FRED",
         "frequency": "D",
         "unit": "Percent",
-        "subtitle": "Risky Corporate Bond Yield minus Treasury Bond Yield"
+        "subtitle": "10 year treasury yield minus 2 year treasury yield",
     },
     "consumer sentiment": {
         "id": "UMCSENT",

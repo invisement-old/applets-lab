@@ -1,8 +1,14 @@
 '''
 extract zillow datasets related to housing price and rent price
 '''
+### PATHES to change
+HOST = "/home/invisement/PROJECTS/inVisement2/apps-workshop/"
+TEMP_PATH = HOST + "temp/"
+OUTPUT_PATH = HOST + "data/"
+
 def main():
     fetch_zip(ZILLOW_BY_COUNTY)
+    print ("unzipped zillow")
     sucess = [try_or_skip(extract_and_save, dataset=d) for d in DATASETS]
     print('successful extracts = ', sucess)
 
@@ -11,10 +17,6 @@ import pandas as pd, requests, zipfile, io
 
 ### CONSTANTS
 DATASETS = ["rent by county", "house price by county"]
-
-### PATHES
-TEMP_PATH = "temp/"
-OUTPUT_PATH = "data/"
 
 ### INPUTS
 ZILLOW_BY_COUNTY = "http://files.zillowstatic.com/research/public/County.zip"

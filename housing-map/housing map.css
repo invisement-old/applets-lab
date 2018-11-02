@@ -1,23 +1,35 @@
+
+
+select {
+    background: inherit;
+    border-style: dotted;
+}
+
+svg {
+    margin: 1em;
+}
+
 .yap-canvas {
   position: relative;
   background-color: rgb(230, 230, 255);
-  padding: 1em;
 }
 
 .yap-canvas > :not(svg) {
   position: absolute;
   font-size: small;
+  background-color: inherit;
 }
 
 .yap-caption {
     display: flex;
     justify-content: center;
+    max-width: 100%;
 }
 
 .yap-caption > rect {
     color: white;
     width: 5em;
-    height: 100%;
+    height: 1em;
 }
 .vertical {
   flex-direction: column;
@@ -58,8 +70,15 @@
   stroke: rgb(180, 180, 180);
 }
 
-.border {
+.border0 {
+  fill: rgb(255, 255, 245);
+  stroke: rgb(180, 180, 180);
+}
+
+.border1 {
   fill: none;
   stroke: rgb(0, 0, 0);
-  stroke-width: 1;
+  stroke-width: 1.5;
 }
+
+

@@ -1,29 +1,46 @@
-
-
-select {
-    background: inherit;
-    border-style: dotted;
-}
-
-svg {
-    margin: 1em;
-}
-
 .yap-canvas {
-  position: relative;
-  background-color: rgb(230, 230, 255);
+    position: relative;
+    background-color: rgb(230, 230, 255);
 }
 
 .yap-canvas > :not(svg) {
-  position: absolute;
-  font-size: small;
-  background-color: inherit;
+    position: absolute;
+    font-size: small;
+    background-color: inherit;
+    border-style: dotted;
 }
 
 .yap-caption {
     display: flex;
     justify-content: center;
     max-width: 100%;
+}
+
+.border0 {
+    fill: rgb(255, 255, 245);
+    stroke: rgb(180, 180, 180);
+}
+
+.border1 {
+    fill: none;
+    stroke: rgb(0, 0, 0);
+    stroke-width: 1.5;
+}
+
+.yap-tip {
+  line-height: 1.5;
+  padding: .5em;
+  background: rgba(0, 0, 150, 0.7);
+  color: white;
+  border-radius: 1em;
+  text-align: center;
+  font-size: smaller;
+}
+
+
+
+.yap-canvas > svg {
+    margin: 1em;
 }
 
 .yap-caption > rect {
@@ -54,31 +71,3 @@ svg {
   top: 50%;
   transform: translateY(-50%)
 }
-
-.yap-tip {
-  line-height: 1.5;
-  padding: .5em;
-  background: rgba(0, 0, 150, 0.7);
-  color: white;
-  border-radius: 1em;
-  text-align: center;
-  font-size: smaller;
-}
-
-.border-and-fill {
-  fill: rgb(255, 255, 250);
-  stroke: rgb(180, 180, 180);
-}
-
-.border0 {
-  fill: rgb(255, 255, 245);
-  stroke: rgb(180, 180, 180);
-}
-
-.border1 {
-  fill: none;
-  stroke: rgb(0, 0, 0);
-  stroke-width: 1.5;
-}
-
-

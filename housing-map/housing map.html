@@ -4,16 +4,38 @@
     <meta charset="utf-8">
 </head>
 
-<body style="margin: 5em 1em">
+<body>
 
-    <div id="yap-canvas">
-        <select id="metrics" class="center"></select>
-        <link rel="stylesheet" type="text/css" href="/housing map.css"/>
-        <script src="/housing map2.js"></script>
-    </div>
+<div id="yap-canvas">
+    <input id="data_file" type="file" class="right"></input>
+    <select id="metrics" class="center"></select>
+</div>
+
+<script>
+
+</script>
+
+<link rel="stylesheet" type="text/css" href="/housing map.css"/>
+<script src="http://127.0.0.1:8887/housing map2.js"></script>
+<script> 
+    a = new YapMap({
+        data_url: "latest housing valuation.csv",
+        id_col: 'Fips', 
+        dimensions: ['State', 'County'],
+        metrics: ['% Annual Return', '$ Average House Price', '$ Average Rent', '$ Intrinsic Value Of Average House'],
+        descending_metrics: ['$ Average House Price'],
+        map_div: "#yap-canvas",
+        metric_selector: "#metrics", 
+        geo_file: "us-counties.geo.json",
+        data_type: "", // "" for default or use one of "csv" "tsv" "json"
+        pigments: ['red', 'green'],
+    })
+    b = 2
+</script>
 
 </body>
 </html>
+
 <!--
 
 -->

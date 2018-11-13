@@ -2,16 +2,16 @@ const cdn_host = "http://127.0.01:8887/cdn/",
       data_host = "http://127.0.01:8887/data/"
 
 var config = {
-    data_url: "latest housing valuation.csv",
+    geo_file: "us-counties.geo.json",
+    data_file: "latest housing valuation.csv",
+    data_type: "", //|| data_file.split('.').pop(),
     id_col: 'Fips',
-    map_div: "#yap-canvas",
-    metric_selector: "#metrics", 
     dimensions: ['State', 'County'],
     metrics: ['% Annual Return', '$ Average House Price', '$ Average Rent', '$ Intrinsic Value Of Average House'],
     pigments: ['red', 'green'],
     descending_metrics: ['$ Average House Price'],
-    geo_file: "us-counties.geo.json",
-    //data_type: "", //|| data_url.split('.').pop(),
+    map_div: "#yap-canvas",
+    metric_selector: "#metrics", 
 }
 
 scripts = [
@@ -38,14 +38,15 @@ function YapMap (conf) {
 }
 
 /// functions
-async function load ({data_url, geo_file, id_col}) {
+async function load ({data_file, geo_file, id_col}) {
     // load libraries sequently
     for(let url of scripts) {
         await fetch(cdn_host+url).then(res => res.text()).then(eval)
     }
 
-    var dataframe = await fetch(data_host + data_url)
-        .then(res => Papa.parse(res.text(), {header: true, dynamicTyping: true}))
+    var dataframe = await fetch(data_host + data_file)
+        .then(res => res.text())
+        .then(text => Papa.parse(text, {header: true, dynamicTyping: true}))
         .then(papa => arraysToDataframe({data: papa.data, id_col}))
 
     var geos = await fetch(data_host + geo_file)

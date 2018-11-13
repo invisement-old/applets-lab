@@ -1,28 +1,93 @@
-const cdn_host = "http://127.0.01:8887/cdn/",
+var cdn_host = "http://127.0.01:8887/cdn/",
       data_host = "http://127.0.01:8887/data/"
 
-var config = {
-    data_url: "latest housing valuation.csv",
-    id_col: 'Fips',
-    map_div: "#yap-canvas",
-    metric_selector: "#metrics", 
-    dimensions: ['State', 'County'],
-    metrics: ['% Annual Return', '$ Average House Price', '$ Average Rent', '$ Intrinsic Value Of Average House'],
-    pigments: ['red', 'green'],
-    descending_metrics: ['$ Average House Price'],
-    geo_file: "us-counties.geo.json",
+async function load_libraries () {
+    libraries = [
+        "papaparse.min.js",
+        "topojson.v1.min.js",
+        "crossfilter.min.js",
+        "d3.v3.min.js",
+        "d3.tip.v0.6.3.js",
+        "jsoneditor-minimalist.min.js",
+        "hash.js"
+    ]
+    for(let url of libraries) {
+        await fetch(cdn_host+url).then(res => res.text()).then(eval)
+    }
+}
+load_libraries()
+
+data = new Hash({url, id})
+
+function YapMap({data_url, id_col, map_div, metric_selector, dimensions, metrics, pigments, descending_metrics, geo_file}) {
+    //this.data_url = data_url || data_host + "latest housing valuation.csv"
+    this.id_col= id_col || 'Fips'
+    this.map_div= map_div || "#yap-canvas"
+    this.metric_selector= metric_selector || "#metrics" 
+    this.dimensions= dimensions || ['State', 'County']
+    this.metrics= metrics
+    this.pigments= pigments || ['red', 'green']
+    this.descending_metrics= descending_metrics
+    this.geo_file= geo_file || data_host + "us-counties.geo.json"
     //data_type: "", //|| data_url.split('.').pop(),
 }
 
-scripts = [
-    "papaparse.min.js",
-    "topojson.v1.min.js",
-    "crossfilter.min.js",
-    "d3.v3.min.js",
-    "d3.tip.v0.6.3.js",
-    "jsoneditor-minimalist.min.js"
-];
+YapMap.prototype.readDataFile = function (selector) {
+    document.querySelector(selector).onchange = (e) => {  
+        file = e.target.files[0]
+        e.target.value = null // HACK: to trigger onchange when the same file is selected
+        this.fileName = file.name
+        var reader = new FileReader()
+        reader.readAsText(file)
+        //this.dataStatus = reader.readyState
+        reader.onload = (e) => {
+            //this.dataStatus = reader.readyState
+            papa = Papa.parse(e.target.result, {dynamicTyping: true, header: true})
+            this.data = arraysToDF({data: papa.data, id_col: this.id_col})
+            this.draw()
+        }
+    }
+    return this
+}
 
+YapMap.prototype.drawDataUrl = function (data_url) {
+    return fetch(data_url)
+        .then(res => res.text())
+        .then(text => Papa.parse(text, {header: true, dynamicTyping: true}))
+        .then(papa => papa.data)
+        .then(data => arraysToDF({data, id_col: this.id_col}))
+        .then(this.draw())
+}
+
+function arraysToDF({data, id_col}) {
+    vars = Object.keys(data[0])
+    let dataframe = {};
+    vars.forEach(v => dataframe[v] = new Map())
+    data.forEach(row => {
+        id = row[id_col]
+        vars.forEach(v => {
+            series = dataframe[v]
+            value = row[v]
+            series.set(id, value)
+        })
+    })
+    return dataframe
+}
+
+
+function obj (x) {
+    this.x = x
+}
+
+obj.prototype.f= function (y) {
+    console.log(y+this.x)
+}
+
+a = new obj(1)
+b = new obj(2)
+
+
+/*
 function YapMap (conf) {
     config = {...config, ...conf}
     load(config)

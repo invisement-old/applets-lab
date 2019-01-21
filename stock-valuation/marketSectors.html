@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<title>inVisement Sector Analysis</title>
+<div id="barContainer"></div>   
+
+<markdown>
+## Expected Return by Sector
+The returns are based on inVisement Fair Price Valuation algorithm. **Zero Expected Return** means it is fairly priced, 
+Negative return means it is over priced, Positive return means it is underpriced. 
+
+The Expected Return is the sum of four valuations:
+- Intrinsic Return: shows the static value (and return) of the company based on their income statement without looking into their balance sheet and growth potentials.
+- Growth Potential: shows the dynamic value (and return) of the comapny based on projection where they are going.
+- Financial Position: shows the streingth of the comapny's balance sheet, assets, and liabilities.
+- Time Return: is driven from the risk premium and time value of your money for investing in the comapny.
+
+</markdown>
+
+<div id="pieContainer"></div>   
+<markdown> 
+## Market Cap by Sector
+Total market cap of all companies that are listed in the US stock market. Note that it measures the US stock market: 
+some of the companies, like BABA,
+is not considered American company despite they are lited in the US stock market.
+
+You can **filter** any sector from the graph by clicking on their series. To save the graph or data table click the hamburger menu.
+
+
+</markdown>
+
+
+
+
+
+<script type="module">
+import inVisement from "http://127.0.0.1:8887/inVisement.js";
+inVisement();
+
+import {initiate, pieChartSectorsMarketCap, barChartSectorsReturn} from "http://127.0.0.1:8887/inVisementCharts.js";
+(async () => {
+  await initiate();
+  pieChartSectorsMarketCap("pieContainer")
+  barChartSectorsReturn("barContainer")
+})()
+</script>

@@ -9,7 +9,7 @@ async function load_libraries () {
         "d3.v3.min.js",
         "d3.tip.v0.6.3.js",
         "jsoneditor-minimalist.min.js",
-        "hash.js"
+        "MapFrame Constructor.js"
     ]
     for(let url of libraries) {
         await fetch(cdn_host+url).then(res => res.text()).then(eval)
@@ -17,19 +17,14 @@ async function load_libraries () {
 }
 load_libraries()
 
-data = new Hash({url, id})
+//data = new Hash({id: 'Fips', metrics: ['% Total Return'], dimensions: ['State', 'County']}, descending_metrics: ['% Home Price'])
 
 function YapMap({data_url, id_col, map_div, metric_selector, dimensions, metrics, pigments, descending_metrics, geo_file}) {
     //this.data_url = data_url || data_host + "latest housing valuation.csv"
-    this.id_col= id_col || 'Fips'
-    this.map_div= map_div || "#yap-canvas"
-    this.metric_selector= metric_selector || "#metrics" 
-    this.dimensions= dimensions || ['State', 'County']
-    this.metrics= metrics
-    this.pigments= pigments || ['red', 'green']
-    this.descending_metrics= descending_metrics
-    this.geo_file= geo_file || data_host + "us-counties.geo.json"
-    //data_type: "", //|| data_url.split('.').pop(),
+    this.map_div = map_div || "#yap-canvas"
+    this.metric_selector = metric_selector || "#metrics" 
+    this.pigments = pigments || ['red', 'green']
+    this.geo_file = geo_file || data_host + "us-counties.geo.json"
 }
 
 YapMap.prototype.readDataFile = function (selector) {
@@ -73,7 +68,6 @@ function arraysToDF({data, id_col}) {
     })
     return dataframe
 }
-
 
 function obj (x) {
     this.x = x

@@ -1,22 +1,22 @@
 /*
-    MapFrame extands Map in JS to have functionalities similar to Python's Panda DataFrame
+    Hash extands Map in JS to have functionalities similar to Python's Panda DataFrame
     Basic Usage:
-    frame = new MapFrame ({url, metrics, dimensions, id}, initialArray)
-    frame.filter((val, id) => )
-    frame.map((val, id) => val)
-    frame.reduce((val, id) => )
-    frame.info({metrics, filter_ids, subset})
-    frame.unfo({filter_ids})
-    frame.clean()
-    frame.info({clean: true})
-    frame.reset()
+    hash = new Hash ({url, metrics, dimensions, id}, initialArray)
+    hash.filter((val, id) => )
+    hash.map((val, id) => val)
+    hash.reduce((val, id) => )
+    hash.info({metrics, filter_ids, subset})
+    hash.unfo({filter_ids})
+    hash.clean()
+    hash.info({clean: true})
+    hash.reset()
 
 Example:
 var cdn_host = "http://127.0.01:8887/cdn/",
       data_host = "http://127.0.01:8887/data/"
 url = data_host + "latest housing valuation.csv"
 id = 'Fips'
-frame = new MapFrame({id, url})
+hash = new Hash({id, url})
 */
 
 
@@ -36,7 +36,7 @@ async function load_libraries () {
 load_libraries()
 
 
-class MapFrame extends Map {
+class Hash extends Map {
     constructor ({url, text, array, id, metrics, dimensions}, arr) {
         super(arr)
         this.info({id, metrics, dimensions})
@@ -51,24 +51,24 @@ class MapFrame extends Map {
     }
 }
 
-MapFrame.prototype.fromCSV = function (data) {
-    let id = this.id
+Hash.prototype.fromCSV = function (data) {
+    let id = this._.id
+    console.log(id)
     data.forEach(row => {
         this.set(row[id], row)
     })
     return this
 }
 
-MapFrame.prototype.info = function (obj) {
-    for ([key, value] of Object.entries(obj)) {
-        this[key] = value
-    }
+Hash.prototype.info = function (obj) {
+    this._ = {...this._, ...obj}
     return this
 }
 
 
-MapFrame.prototype.unfo = function (keys) {
-    keys.forEach(k => delete this[k])  
+Hash.prototype.unfo = function (keys) {
+    keys.forEach(k => delete this._[k])  
     return this
 }
+
 

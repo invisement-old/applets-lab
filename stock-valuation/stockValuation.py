@@ -109,9 +109,9 @@ def score(x, x0=0.1): # transform return to buy (+1) or hold (0) or sell (-1)
     else:
         return 0
 
-def sigmoid (x, x0=1, L=2):
+def logistic (x, x0=1, L=2, k=4): # k=4 means in middle it has slope of 1
     try:
-        return L/(1+math.exp(x0-x))
+        return L/(1+math.exp(k*(x0-x)))
     except:
         return np.nan
 
@@ -130,7 +130,7 @@ def weightedMean(df, weightCol='Market Cap'):
     df2[weightCol] = total
     return df2
 
-def stockValuation ():
+def prepare_input_dataset_for_stock_valuation ():
     #Read Datasets
     quotes = pd.read_csv('./stock-valuation/quotes.csv'
         ).set_index('symbol')[['companyName', 'sector', 'latestPrice', 'marketCap']]
@@ -141,96 +141,157 @@ def stockValuation ():
 
     # calculate input datasets for each company: lastest, margin, growth
     income_variables = ['operatingRevenue', 'operatingGainsLosses', 'researchAndDevelopment', 'totalRevenue', 'costOfRevenue', 'grossProfit', 'operatingExpense', 'operatingIncome', 'netIncome', 'cashChange', 'cashFlow'] # cashChange is net cash change, cash flow is net operating cash flow
-    income = quarterly.sort_values('reportDate', ascending=False
+    trailing_income = quarterly.sort_values('reportDate', ascending=False
         )[income_variables
         ].groupby('symbol'
         ).agg(sum4quarters)
 
     balance_variables = [var for var in quarterly.columns if var not in income_variables]
-    balance = quarterly.sort_values('reportDate', ascending=False
+    trailing_balance = quarterly.sort_values('reportDate', ascending=False
         )[balance_variables
         ].groupby('symbol'
         ).head(1)
 
-    latest = income.join(balance) # I have no idea what total cash is: !!!!!!! NEVER USE IT
+    last_year_trailing = trailing_income.join(trailing_balance) # I have no idea what total cash is: !!!!!!! NEVER USE IT
 
-    fundamentals = pd.concat([latest, annual])
-    margin =  fundamentals[['netIncome', 'grossProfit'] #_temp[['netIncome', 'grossProfit']
+    fundamentals = pd.concat([last_year_trailing, annual], sort=False)
+    margin =  fundamentals[['netIncome', 'operatingIncome', 'grossProfit', 'cashFlow', 'operatingExpense', 'costOfRevenue', 'totalAssets'] #_temp[['netIncome', 'grossProfit']
         ].div(fundamentals['totalRevenue'], axis=0
         ).groupby('symbol'
         ).median(
         ).rename(columns = lambda colname: colname+'Margin')
 
     growth = fundamentals.groupby('symbol'
-        )[['reportDate', 'totalRevenue', 'totalLiabilities', 'totalAssets', 'totalDebt']
+        )[['reportDate', 'totalRevenue', 'totalLiabilities', 'cashFlow', 'totalDebt', 'netIncome', 'shareholderEquity', 'grossProfit', 'operatingIncome', 'operatingExpense', 'costOfRevenue', 'totalAssets']
         ].apply(annual_percent_change
         ).groupby('symbol'
         ).median(
         ).rename(columns = lambda colname: colname+'Growth')
 
+    # get the latest valid number from fundamentals as the latest
+    latest = fundamentals.groupby('symbol').first()
+
     # merge all to make input dataset
     inputData = latest.join(growth).join(margin).join(quotes)
-    inputData['capitalReturn'] = inputData['netIncome'] / inputData['marketCap']
-    inputData['capitalReturn'] = inputData['capitalReturn'].where(inputData['capitalReturn']>0, 0)
+    #inputData['capitalReturn'] = inputData['netIncome'] / inputData['marketCap']
+    #inputData['capitalReturn'] = inputData['capitalReturn'].where(inputData['capitalReturn']>0, 0)
     #or use margin medians: inputData['netIncomeMargin'] * inputData['totalRevenue'] / inputData['marketCap']
+    return inputData
 
-    # get model parameters: nominal discount, average growth, years, growth to margin rate
-    r = requests.get("https://api.iextrading.com/1.0/stock/jnk/stats") # as a proxy for discount factor
-    r.raise_for_status()
-    nominalDiscount = (r.json()['dividendYield']/100 + inputData['capitalReturn'])/2
-    years = 5
 
-    #calculate averageGrowth through weighted mean 
+########## Financial Modeling thorugh year by year
+## Growth decays, Growth means revenue growth as it is reliable trend with min disparity and consumer channel
+## Gross profit is marginal profit (variable costs) and depends directly on Revenue
+## Operating Expense in fixed cost and remains constant
+## Tax depends on Operating income
+## Tax credit and Interest works the same way and they are proportional to Revenue
+def flow (incomes, DecayRate=0.8, TaxRate=0.21):
+    Growth = incomes['Growth'] * DecayRate
+    #Growth = Growth.where(Growth>0, 0)
+    Revenue = incomes['Revenue'] * (1 + Growth)
+    grossMargin = incomes['GrossIncome']/incomes['Revenue']
+    GrossIncome =  Revenue * grossMargin
+    #GrossIncome = GrossIncome.where(GrossProfit>0, 0)
+    fixedCost = incomes['GrossIncome'] - incomes['OperatingIncome']
+    OperatingIncome = GrossIncome - fixedCost
+    ExpectedIncome = OperatingIncome * (1-TaxRate) # expected income is what goes to financial stakeholders and share holders
+    taxAndInterestCreditRate = (incomes['NetIncome'] - incomes['ExpectedIncome'])/incomes['Revenue']
+    NetIncome = ExpectedIncome + taxAndInterestCreditRate * Revenue #* DecayRate
+    nextYearIncomes = pd.concat([NetIncome, ExpectedIncome, OperatingIncome, GrossIncome, Revenue, Growth], axis=1)
+    return nextYearIncomes
+
+
+def transform_returns (col):
+    m = col.median()
+    return col.apply(lambda x: logistic(x, m, 2, 4))
+
+
+def intrinsic_value (DecayRate = 0.8):
+    inputData = prepare_input_dataset_for_stock_valuation()
+    Names = ['NetIncome', 'ExpectedIncome', 'OperatingIncome', 'GrossIncome', 'Revenue', 'Growth']
+    ## create the starter dataset
+    Growth = inputData['totalRevenueGrowth']
+    Revenue = inputData['totalRevenue']
+    GrossIncome = inputData['grossProfitMargin'] * Revenue
+    OperatingIncome = GrossIncome - inputData['operatingExpense']
+    ExpectedIncome = OperatingIncome.where(OperatingIncome<0, OperatingIncome * (1 - 0.21)) # tax rate = 0.21 for positive operating income
+    NetIncome = (inputData['netIncomeMargin'] / inputData['operatingIncomeMargin']) * OperatingIncome
+    incomes = pd.concat([NetIncome, ExpectedIncome, OperatingIncome, GrossIncome, Revenue, Growth], axis=1
+        ).set_axis(Names, axis='columns', inplace=False)
+    ## create future incomes
+    futureAnnualIncomes = {}
+    for year in range(50):
+        incomes = flow(incomes, DecayRate).set_axis(Names, axis='columns', inplace=False)
+        futureAnnualIncomes[year+1] = incomes
+    FutureIncomes = pd.concat(futureAnnualIncomes, names=['year', 'symbol'])
+    ## create the discount rates along dataset rows and then divide to get present value of incomes which gives economic value of companies
     snp500 = inputData.drop_duplicates('companyName').sort_values('totalRevenue', ascending=False)[:500]
-    weights = snp500['totalRevenue']
-    weights = weights/weights.sum()
-    averageGrowth = (snp500["totalRevenueGrowth"]*weights).sum()
+    averageGrowth = weightedMean(snp500[['totalRevenueGrowth', 'totalRevenue']], weightCol='totalRevenue')['totalRevenueGrowth']
+    bondYield = requests.get("https://api.iextrading.com/1.0/stock/jnk/stats").json()['dividendYield']/100
+    DiscountRate = bondYield + averageGrowth * DecayRate
+    years = FutureIncomes.index.get_level_values('year')
+    Discounts = 1/(1+DiscountRate)**years
+    FuturesNPV = FutureIncomes.multiply(Discounts, axis=0
+        ).groupby('symbol').sum()#skipna=False
+    FuturesNPV.to_csv("./stock-valuation/stocks-futuresNPV.csv")
+    return DiscountRate
 
-    growthToMarginRate = inputData['grossProfitMargin']#.fillna(inputData['netIncomeMargin'])
 
-    # calculate each company parameters: revenue growth, debt growth, net growth, net margin
-    revGrowth = inputData['totalRevenueGrowth'] - averageGrowth
-    debtGrowth = inputData['totalDebtGrowth'].fillna(inputData['totalLiabilitiesGrowth']) - averageGrowth 
-    netRevenueGrowth = inputData['totalRevenueGrowth'] - inputData['totalLiabilitiesGrowth']
-    netMargin = inputData['netIncomeMargin'].where(inputData['netIncomeMargin']>0, 0) + growthToMarginRate *netRevenueGrowth.where(netRevenueGrowth>0, 0)
+def BuyOrSell (r):
+    if r > 0.25:
+        return 'Buy'
+    elif r >= -0.25:
+        return 'Hold'
+    elif r < -0.25:
+        return 'Sell'
+    else:
+        return np.nan
+        
 
-    # calculate values: base value, growth value, extra cash, debt potentials
-    inputData['baseValue'] = inputData['totalRevenue'] * netMargin / nominalDiscount
-    inputData['growthValue'] = years*revGrowth* inputData['totalRevenue']*netMargin / nominalDiscount
-    inputData['extraCash'] = inputData['currentAssets'].fillna(inputData['currentCash']) - inputData['currentDebt'].fillna(0)
-    inputData['debtPotential'] = - years * debtGrowth * inputData['totalDebt'].fillna(inputData['totalLiabilities'])
-    # for financial frim that have no gross profit, just calculate asset minus debt
-    inputData['baseValue'].fillna( inputData['totalAssets'] - inputData['totalLiabilities'], inplace=True) 
+def adjustedReturn (x, center=1):
+    x = x/center
+    return np.where(x>1, np.log(x), np.exp(x-1)-1)    
 
-    # divide values to market cap to get relative value, then transform to return with sigmoid (logistic) function
-    valuation = inputData[['baseValue', 'growthValue', 'extraCash', 'debtPotential']].div(inputData['marketCap'].replace(0, np.nan), axis=0)
-    valuation['Base Return'] = valuation['baseValue'].apply(sigmoid)-1
-    valuation['Growth Potential'] = (valuation['growthValue']+1).apply(sigmoid)-1
-    valuation['Liquid Position'] = (valuation['extraCash']+1).apply(sigmoid)-1
-    valuation['Debt Position'] = (valuation['debtPotential']+1).apply(sigmoid)-1
-    valuation['Financial Position'] = valuation['Debt Position'] + valuation['Liquid Position']
 
-    # calculate final data: far price, net return, expected return, rating
-    valuation['netReturn'] = valuation[['Base Return', 'Growth Potential', 'Liquid Position', 'Debt Position']].sum(axis=1)
-    valuation['Expected Return'] = valuation['netReturn'] + nominalDiscount + averageGrowth 
-    #valuation['Market Cap'] = inputData['marketCap']
-    valuation['Fair Price'] = inputData['latestPrice'] * (1 + valuation['netReturn'])
-    #valuation['Sector'] = inputData['sector']
 
-    valuation['Sector'] = inputData['sector']
-    valuation['Market Cap'] = inputData['marketCap']
-    valuation['Name'] = inputData['companyName']
 
-    # transform returns to score and give rating: buy, sell, hold, strong buy, strong sell
-    valuation['Rating'] = valuation[['netReturn', 'Base Return', 'Growth Potential', 'Liquid Position', 'Debt Position']
-        ].applymap(score
-        ).apply(sum, axis=1
-        ).replace({-5:'strong sell', -4:'strong sell', -3: 'strong sell', -2: 'sell', -1: 'sell', 0: 'hold', 1: 'hold', 2:'buy', 3:'buy', 4:'strong buy', 5:'strong buy'})
+def stock_info ():
 
-    # write output
-    output = valuation[['Name', 'Rating', 'Fair Price', 'Expected Return', 'Base Return', 'Growth Potential', 'Financial Position', 'Market Cap', 'Sector']]
-    output.to_csv('./stock-valuation/stockValuation.csv')
+inputData = prepare_input_dataset_for_stock_valuation()
 
+DiscountRate = intrinsic_value()
+
+snp500 = inputData.drop_duplicates('companyName').sort_values('totalRevenue', ascending=False)[:500]
+averageGrowth = weightedMean(snp500[['totalRevenueGrowth', 'totalRevenue']], weightCol='totalRevenue')['totalRevenueGrowth']
+bondYield = requests.get("https://api.iextrading.com/1.0/stock/jnk/stats").json()['dividendYield']/100
+DiscountRate = bondYield + averageGrowth * DecayRate
+
+
+FuturesNPV = pd.read_csv('./stock-valuation/stocks-futuresNPV.csv', index_col='symbol').rename(columns = lambda name: name + 'FuturesNPV')
+
+a = FuturesNPV.drop('GrowthFuturesNPV', axis=1)
+
+a = inputData.join(FuturesNPV)
+a['Return'] = b = a['NetIncomeFuturesNPV'] / a['marketCap']
+flag = (b>0) & (b<10) 
+b = b[flag]
+a.loc[flag, 'Expected Net Return'] = adjustedReturn(b, center=1)
+
+a['Fair Price'] = a['latestPrice'] * (1+a['Expected Net Return'])
+
+a['Next Year Return'] = DiscountRate + a['Expected Net Return']
+a['BuyOrSell'] = a['Expected Net Return'].apply(BuyOrSell)
+
+a['Direct Cost'] = a['RevenueFuturesNPV']-a['GrossIncomeFuturesNPV']
+a['Operating Expense'] = a['GrossIncomeFuturesNPV']-a['OperatingIncomeFuturesNPV']
+a['Interest and Tax'] = a['OperatingIncomeFuturesNPV']-a['NetIncomeFuturesNPV']
+a['Net Profit'] = a['NetIncomeFuturesNPV']
+
+
+a.loc[tickers].round(2).reset_index().apply(lambda row: row.to_json('./stock-valuation/stock-json-files/' + row.symbol + '.json'), axis=1)
+
+
+'''
 
 def sectorsOutlook ():
     stockReturns = pd.read_csv('./stock-valuation/stockValuation.csv').set_index('symbol')
@@ -241,14 +302,17 @@ def sectorsOutlook ():
     sectors = sectors.append(weightedMean(sectors).rename('Total Market'))
     sectors.to_csv('./stock-valuation/sectors.csv')
 
-'''
+
+
+
+
 #idx = ['reportDate',]
 #inc = [ 'totalRevenue', 'costOfRevenue', 'grossProfit', 'researchAndDevelopment', 'operatingExpense', 'operatingIncome', 'netIncome' ]
 #bs = ['totalAssets', 'currentAssets', 'totalCash', 'totalLiabilities', 'currentDebt', 'totalDebt', 'shareholderEquity']
 #cf = ['currentCash', 'cashChange', 'cashFlow', 'operatingGainsLosses']
 output = pd.read_csv("./stock-valuation/stockValuation.csv", index_col='symbol')
 valuation = output.query('Rating in ["strong buy"]').sort_values('Market Cap', ascending=False).drop(['Fair Price', 'Rating'], axis=1).groupby('Sector').head(2)
-tickers = ['NVDA', 'GOOG', 'AAPL', 'MSFT', 'MDB', 'AMZN', 'WMT', 'GS', 'F', 'T', 'BRK.A', 'FB', 'TSLA', 'ACN', 'MCD', 'CRM', 'TWTR', 'SNAP', 'GE', 'BA']
+tickers = ['INTC', 'NVDA', 'GOOG', 'FB', 'AAPL', 'MSFT', 'CRM', 'ACN', 'MDB', 'AMZN', 'BABA', 'WMT', 'MCD', 'GS', 'BRK.A', 'GE', 'BA', 'TM', 'F', 'TSLA', 'T', 'VZ', 'TWTR', 'SNAP']
 output.drop(['Market Cap', 'Fair Price', 'Sector'], axis=1).loc[tickers]
 
 IT NEEDS TEST AND VALIDATION:

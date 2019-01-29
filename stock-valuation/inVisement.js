@@ -1,5 +1,6 @@
 // Load all js libraries one after another
 
+
 var div = document.createElement("div");
 div.innerHTML = `
 
@@ -9,49 +10,33 @@ div.innerHTML = `
 <head>
   <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <script src='http://127.0.0.1:8887/markdown.min.js'> </script>
 </head>
 
 </html>
 
-
 <a href="https://inVisement.com"> <img class="inVisement-logo" src="https://invisement.com/images/logo.png"> </img> </a>
-<a href="https://inVisement.com"> <img class="inVisement-short-logo" src="http://127.0.0.1:8887/inVisement-short-logo.png"> </img> </a>
-
 
 <style>
 
-.inVisement-short-logo {
-  width: 25px;
-  left: 0px;
-  padding: 0;
-  position: fixed;
-  top: 0px;
-  border-radius: 2px;
-  background-color: azure;
-}
-
 .inVisement-logo {
   width: 100px;
-  right: 5px;
+  right: 50%;
+  transform: translateX(50%);
   padding: 2px 5px;
   position: fixed;
-  bottom: 5px;
-  border-radius: 5px;
-  background-color: azure;
-  border: thick double blue;
+  top: 0px;
 }
 html {
-  background-color: rgb(240, 255, 255); 
 }
 body {
-  margin: 5px 0;
+  margin: 0 auto;
+  padding: 5px 3px;
   max-width: 1000px;
   display: flex;
   flex-flow: row wrap;
   justify-content: center;
 }
-body > div, markdown{
+body > div, mark-down{
   padding: 5px;
   margin: 0;
   max-width: 450px;
@@ -59,22 +44,38 @@ body > div, markdown{
   height: 100%;
 }
 
+js-var, em, code {
+  color: darkblue;
+}
 
 </style>
 `;
 
 export default function () {
+
+window.dataHost = 'http://127.0.0.1:8887/' //'https://data.inVisement.com/'
+window.cdnHost = 'http://127.0.0.1:8887/'//'https://inVisement.com/cdn/'
+
 document.body.append(div)
 
+//window.customElements.define('mark-down', {extends: 'p'})
 // convert all markdowns to html after imprting markdown library
-fetch('http://127.0.0.1:8887/markdown.min.js')
+fetch('https://cdnjs.cloudflare.com/ajax/libs/markdown-it/8.4.2/markdown-it.min.js')
 .then(res => res.text())
 .then(eval)
 .then(() =>{
-  document.querySelectorAll('markdown')
+  var markdown = window.markdownit({html: true});
+  document.querySelectorAll('mark-down')
   .forEach(md => {
-    md.innerHTML = markdown.toHTML(md.innerHTML)
+    md.innerHTML = markdown.render(md.innerHTML)
+  })
+  document.querySelectorAll('code').forEach(code => {
+    code.innerHTML = eval(code.innerHTML)
+  })
+  document.querySelectorAll('em').forEach(jsvar => {
+    jsvar.innerHTML = window['jsvar'][jsvar.innerHTML] || jsvar.innerHTML
   })
 })
 };
+
 

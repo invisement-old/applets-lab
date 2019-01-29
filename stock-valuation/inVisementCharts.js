@@ -1,3 +1,5 @@
+
+
 // Load all js libraries one after another
 export async function initiate () {
     var jsUrls = [
@@ -44,7 +46,65 @@ var highchartsDefaultOptions = {
       },
     },
   },
+  title: {
+    style: {
+      fontSize: 16,
+      fontWeight: 'bold',
+    }
+  },
+    tooltip: {
+      formatter: function() {
+        return this.key +': <b>' +Math.round(this.percentage*10)/10+'</b>%<br/>$<b>'+ Math.round(this.y/1e9) +'</b>B'
+      }
+    },
+    legend: {
+      labelFormatter: function () {
+        return this.name +': <b>' +Math.round(this.percentage*10)/10+'</b>%'
+      },
+      padding: 0,
+      itemStyle: {
+        fontSize: '10px',
+        //fontWeight: 'normal',
+      },
+    }, 
 }
+
+
+var inVisementPieChartOptions = {
+  chart: {
+    type: 'pie',
+  },
+  subtitle: {
+      align: 'center',
+      verticalAlign: 'middle',
+      style: {
+        fontWeight: 'bold',
+        fontSize: 14,
+      },
+      //text: "Total Market Cap:<br/>$<b>" + Math.round(totalMarketCap/1e9).toLocaleString() + '</b>B',
+      y: 0,
+  },
+  plotOptions: {
+    pie: {
+      selected: true,
+      innerSize: '80%',
+      allowPointSelect: true,
+      showInLegend: true,
+      dataLabels: {
+        enabled: true,
+        distance: 5,
+        style: {
+          fontSize: '12px',        
+        },
+        formatter: function() {
+          return '$' + Math.round(this.y/1e9) + 'B'
+        }
+      },
+    },
+  },
+
+}
+
 
 function createDataframe (data) { //data from papaparse
   let key = 'Sector'
@@ -77,7 +137,7 @@ function createDataframe (data) { //data from papaparse
 
 export function pieChartSectorsMarketCap (container){
 
-  fetch("https://data.invisement.com/sectors.csv")
+  fetch(dataHost + "sectors.csv")
   .then(res => res.text())
   .then(csv => Papa.parse(csv, {
     skipEmptyLines: true,
@@ -87,7 +147,6 @@ export function pieChartSectorsMarketCap (container){
   .then(result => {
     updatePieChartOptionsByData(result.data, pieChartOptions)  
     Highcharts.chart(container, pieChartOptions) 
-    console.log(Highcharts.getOptions())
   }) 
 
   function updatePieChartOptionsByData (csvText, pieChartOptions) {
@@ -97,11 +156,11 @@ export function pieChartSectorsMarketCap (container){
       name: 'Market Cap',
       data: [...dataframe['Market Cap'].values()],
     }]
-    let total = pieChartOptions.series[0].data.reduce((s,v) => s + v.y||0, 0)
+    let totalMarketCap = pieChartOptions.series[0].data.reduce((s,v) => s + v.y||0, 0)
     pieChartOptions.subtitle = {
       align: 'center',
       verticalAlign: 'middle',
-      text: "Total Market Cap:<br/>$<b>" + Math.round(total/1e9).toLocaleString() + '</b>B',
+      text: "Total Market Cap:<br/>$<b>" + Math.round(totalMarketCap/1e9).toLocaleString() + '</b>B',
       y: -10,
     }
   }
@@ -109,7 +168,6 @@ export function pieChartSectorsMarketCap (container){
   var pieChartOptions = {...highchartsDefaultOptions,
     chart: {
       type: 'pie',
-      //backgroundColor: 'rgba(255,255,255,1)',
     },
     title: {
       text: "Market Cap by Sector",
@@ -155,7 +213,7 @@ export function pieChartSectorsMarketCap (container){
 
 export function barChartSectorsReturn (container) {
 
-  fetch("https://data.invisement.com/sectors.csv")
+  fetch(dataHost + "sectors.csv")
   .then(res => res.text())
   .then(csv => Papa.parse(csv, {
     skipEmptyLines: true,
@@ -256,3 +314,104 @@ export function barChartSectorsReturn (container) {
 
 }
 
+
+export function recommendedPortfolioBySectors (container) {
+
+  fetch(dataHost + "sectors.csv")
+  .then(res => res.text())
+  .then(csv => Papa.parse(csv, {
+    skipEmptyLines: true,
+    dynamicTyping: true,
+    header: true,    
+  }))
+  .then(result => {
+    updatePortfolioChartOptionsByData(result.data, portfolioChartOptions)  
+    Highcharts.chart(container, portfolioChartOptions) 
+  })
+
+  function updatePortfolioChartOptionsByData (csvText, pieChartOptions) {
+    let dataframe = createDataframe (csvText)
+    dataframe['Market Cap'].delete('Total Market')
+    var portfolioWeights = [];
+    dataframe['Market Cap'].forEach((v,i) => {
+      let name = i 
+      let y = v.y * dataframe['Expected Return'].get(name).y
+      portfolioWeights.push({name, y})
+    });
+    var totalPortfolioWeights = portfolioWeights.reduce((sum,v) => sum += v.y||0, 0)
+    var totalMarketCap = [...dataframe['Market Cap'].values()].reduce((sum, v) => sum += v.y||0, 0)
+    let totalReturn = Math.round(1000* totalPortfolioWeights/totalMarketCap)/10
+    console.log(totalReturn)
+
+    pieChartOptions.series = [{
+      name: 'Recommended Portfolio Weights',
+      data: portfolioWeights,
+    }]
+
+    pieChartOptions.subtitle = {
+      align: 'center',
+      verticalAlign: 'middle',
+      text: "Expected Return:<br/><b>" + totalReturn + '</b>%',
+      y: -10,
+    }
+  }
+
+  var portfolioChartOptions = {...highchartsDefaultOptions,
+    chart: {
+      type: 'pie',
+    },
+    title: {
+      text: "Recommended Portfolio Composition",
+      style: {
+        fontSize: 16,
+      }
+    },
+    plotOptions: {
+      pie: {
+        innerSize: '66%',
+        allowPointSelect: true,
+        showInLegend: true,
+        dataLabels: {
+          enabled: true,
+          distance: 5,
+          style: {
+            fontSize: '10px',        
+          },
+        },
+      },
+    },
+    tooltip: {
+      formatter: function() {
+        return this.key +': <b>' +Math.round(this.percentage*10)/10+'</b>%'
+      }
+    },
+    legend: {
+      labelFormatter: function () {
+        return this.name +': <b>' +Math.round(this.percentage*10)/10+'</b>%'
+      },
+      padding: -10,
+      itemStyle: {
+        fontSize: '9px',
+        fontWeight: 'normal',
+      },
+    },
+  }
+
+
+
+}
+
+
+///////////// NEW SCRIPTs
+export function stcokValuationPieChart(jsonData, container) {
+  var names = {'Direct Cost': 'Production', 'Operating Expense': 'Operation', 'Interest and Tax': 'Corporation', 'Net Profit': 'Shareholders'}
+  var piechartData = Object.keys(names).map(key => {return {
+    name: names[key],
+    y: jsonData[key],
+  }});
+  var chartOptions = {...highchartsDefaultOptions, ...inVisementPieChartOptions}
+  chartOptions.title.text = "Fair Price: $"+ jsonData['Fair Price']
+  chartOptions.subtitle.text = "<b style='font-size: xx-large'>" +jsonData['BuyOrSell'] + "<br> Expected Return: "+Math.round(jsonData['Next Year Return']*100)+"% <br> Growth Potential: "+Math.round(jsonData['GrowthFuturesNPV']*100)+"%"   
+  chartOptions.series = [{name:'Net Present Value of Future Incomes', data: piechartData}]
+  Highcharts.chart(container, chartOptions)
+}

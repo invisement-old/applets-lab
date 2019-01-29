@@ -1,0 +1,25 @@
+<!DOCTYPE html>
+<title>inVisement Sector Analysis</title>
+
+<mark-down>
+  ### Intrinsic Valuation: _companyName_
+  Future revenue and who gets it
+  <div id='pieContainer'></div>
+</mark-down>
+
+
+<script type="module">
+
+import inVisement from "http://127.0.0.1:8887/inVisement.js";
+
+import {initiate, stcokValuationPieChart} from "http://127.0.0.1:8887/inVisementCharts.js";
+(async () => {
+  var symbol = document.URL.split('?')[1].toUpperCase()
+  var data = await fetch('http://127.0.0.1:8887/stock-json-files/'+symbol+'.json').then(res => res.json())
+  window['jsvar'] = data
+  inVisement();
+  await initiate();
+  stcokValuationPieChart(data, 'pieContainer');
+
+})()
+</script>
